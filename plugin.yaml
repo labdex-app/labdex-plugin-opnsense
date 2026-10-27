@@ -1,0 +1,49 @@
+id: opnsense
+name: OPNsense
+kind: integration
+tags: [firewall, dhcp, discovery]
+provides: [discovery]
+pages:
+  - {id: access, label: Firewall access}
+  - {id: policy, label: Firewall policy, place: policy, action: sync_rules}
+version: "1.3"
+labdex: ">=1.3,<2"
+description: Keeps firewall aliases in sync with the inventory, adds hosts to your own aliases, shows the rules that concern a host and which declared access has no rule. Imports the ARP table into Discovery.
+settings:
+  - {key: url, label: URL, type: string, required: true, help: "e.g. https://opnsense.mgmt.example.net"}
+  - {key: api_key, label: API key, type: secret, required: true}
+  - {key: api_secret, label: API secret, type: secret, required: true}
+  - {key: verify_tls, label: Verify TLS certificate, type: bool, default: true}
+  - {key: ca_file, label: CA bundle path, type: string, help: For an internal CA; leave empty for the system store}
+  - {key: allow_delete, label: Delete aliases that left the inventory, type: bool, default: true, help: "Only aliases in the category automation:labdex (or tagged [labdex] by older versions)"}
+  - {key: adopt_existing, label: Take over existing aliases with the same name, type: bool, default: false}
+  - key: extend_aliases
+    label: Add members to existing aliases
+    type: table
+    help: "For aliases you made by hand on the firewall. A member can be an address, a CIDR, another alias, or an inventory host name (its H_ alias is added). labdex only ever removes members it added itself."
+    columns:
+      - {key: alias, label: Firewall alias, type: string, required: true}
+      - {key: member, label: Member, type: string, required: true}
+  - {key: wan_interface, label: WAN interface (port forwards), type: string, default: wan}
+  - {key: nat_destination, label: Forward traffic to, type: string, default: wanip, help: "wanip = the WAN address; or an alias / address for a second public IP"}
+  - {key: kea_reservations, label: Manage Kea DHCP reservations, type: bool, default: false, help: "Hosts with a MAC and an IPv4 address get a reservation in the matching Kea subnet. Only reservations labdex created ([labdex]) are changed."}
+host_settings:
+  - {key: member_of, label: Add this host to these firewall aliases, type: list, help: "Names of aliases on the firewall, e.g. Admin_Hosts. The host's H_ alias is added as a member."}
+host_view: true
+actions:
+  - {id: test, label: Test connection, mode: run}
+  - {id: sync_aliases, label: Sync aliases, mode: plan, schedulable: true, description: Compare the firewall's aliases with the inventory and apply the difference}
+  - {id: sync_rules, label: Sync policy rules, mode: plan, schedulable: true, description: "Pass rules from the zone matrix and services' 'allow from', in the category automation:labdex (your own rules are never touched)"}
+  - {id: sync_nat, label: Sync port forwards, mode: plan, schedulable: true, description: "A port forward (with its filter rule) for every service marked public; only the forwards labdex made are changed"}
+  - {id: check_access, label: Check declared access, mode: run, schedulable: true, description: "For every service with 'allow from', look for a pass rule that allows it"}
+  - {id: import_aliases, label: Import the firewall's aliases, mode: run, description: "Your own aliases on the firewall become custom aliases in labdex, under their names (nothing is renamed). labdex's and OPNsense's built-in ones are skipped.",
+     params: [{key: only, label: Only these, type: string, help: "Name patterns, e.g. HG_* NG_OFFICE; empty = all"}]}
+  - {id: import_arp, label: Import ARP and NDP tables, mode: run, schedulable: true, description: Adds the IPv4 (ARP) and IPv6 (NDP) neighbours the firewall knows to Discovery, with their MACs}
+  - {id: import_leases, label: Import DHCP leases, mode: run, schedulable: true, description: "Kea DHCPv4 and DHCPv6 leases (address, MAC, hostname) into Discovery"}
+  - {id: sync_reservations, label: Sync DHCP reservations, mode: plan, schedulable: true, description: Kea DHCPv4 reservations from the inventory's MAC/IP pairs}
+  - {id: sync_prefixes, label: Read delegated IPv6 prefixes, mode: run, schedulable: true, description: "Reads the prefix each WAN interface received (DHCPv6-PD) and moves networks with a delegated prefix to it; DNS and aliases follow"}
+hooks:
+  - {events: ["host.*", "network.*", "alias.*", "setting.*", "inventory.*", "hostmodule.*"], action: sync_aliases}
+  - {events: ["host.*", "network.*", "inventory.*", "hostmodule.*"], action: sync_reservations}
+  - {events: ["policy.*", "host.*", "network.*", "alias.*", "inventory.*"], action: sync_rules}
+  - {events: ["host.*", "inventory.*"], action: sync_nat}
