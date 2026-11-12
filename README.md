@@ -1,5 +1,7 @@
 # OPNsense
 
+[![Release](https://github.com/labdex-app/labdex-plugin-opnsense/actions/workflows/release.yml/badge.svg)](https://github.com/labdex-app/labdex-plugin-opnsense/actions/workflows/release.yml) [![Buy Me a Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-bitsandbricks-7c3aed?logo=buymeacoffee&logoColor=white&labelColor=181b20)](https://buymeacoffee.com/bitsandbricks)
+
 A [labdex](https://github.com/labdex-app/labdex) plugin. Keeps firewall aliases in sync with the inventory, adds hosts to your own aliases, shows the rules that concern a host and which declared access has no rule. Imports the ARP table into Discovery.
 
 **Version** 1.3 · **Works with** labdex >=1.3,<2 · **Plugin id** `opnsense`
